@@ -396,6 +396,7 @@ impl Shell
     fn remove_dir(&mut self, dir_name: [u8; 70]) 
     {
         let cur_dir = self.directories.dirs[self.cur_dir];
+        let mut has_same_name = true;
 
         for i in 0..cur_dir.child_count as usize 
         {
@@ -403,9 +404,16 @@ impl Shell
 
             for j in 0..10 
             {
-                if dir_to_check.name[j] != dir_name[j] {
-                    continue;
+                if dir_to_check.name[j] != dir_name[j] 
+                {
+                    has_same_name = false;
+                    break;
                 }
+            }
+
+            if !has_same_name 
+            {
+                continue;
             }
 
             if self.directories.dirs[dir_to_check.index].child_count > 0 
