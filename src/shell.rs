@@ -6,7 +6,7 @@ use lazy_static::lazy_static;
 
 
 const MAX_CHILDREN: usize = 20;
-const DELETE_INDEX: usize = MAX_CHILDREN + 1;
+const UNINITIALIZED_INDEX: usize = MAX_CHILDREN + 1;
 const BUF_SIZE:usize = (25*80) as usize; 
 
 lazy_static! {
@@ -75,8 +75,10 @@ pub fn check_command(str_for_compare: &str, arr: [u8; 10]) -> bool
     let mut is_valid = true;
 
     let mut i = 0;
-    for symbol in str_for_compare.bytes() {
-        if symbol != arr[i] {
+    for symbol in str_for_compare.bytes() 
+    {
+        if symbol != arr[i] 
+        {
             is_valid = false;
         }
         i += 1;
@@ -97,34 +99,14 @@ struct Dirs
     parent_index: usize,
     child_count: u8,
     child_indexes: [usize; MAX_CHILDREN],
-    files_indexes: [usize; MAX_CHILDREN]
  }
-
- #[derive(Debug, Clone, Copy)]
- struct File 
- {
-    index: usize,
-    name: [u8; 10],
-    count_lines: usize,
-    folder_index: usize,
-    content: [u8; BUF_SIZE],
-}
-
-struct FileList 
-{
-    files: [File; 100],
-}
- 
 
 struct Shell 
 {
     buf: [u8; 80],
     buf_len: usize,
     directories: Dirs,
-    files_list: FileList,
     cur_dir: usize,
-    is_editing_file: bool,
-    current_editing_file: usize,
 }
 
 impl Shell 
@@ -136,26 +118,14 @@ impl Shell
             buf_len: 0,
             directories: Dirs {
                 dirs: ([Dir {
-                    index: DELETE_INDEX,
+                    index: UNINITIALIZED_INDEX,
                     name: [b' '; 10],
                     parent_index: 0,
                     child_count: 0,
-                    child_indexes: [DELETE_INDEX; MAX_CHILDREN],
-                    files_indexes: [DELETE_INDEX; MAX_CHILDREN],
+                    child_indexes: [UNINITIALIZED_INDEX; MAX_CHILDREN]
                 }; 100]),
             },
             cur_dir: 0,
-            files_list: FileList {
-                files: [File {
-                    index: DELETE_INDEX,
-                    name: [b'\0'; 10],
-                    count_lines: 0,
-                    folder_index: DELETE_INDEX,
-                    content: [b' '; BUF_SIZE],
-                }; 100],
-            },
-            is_editing_file: false,
-            current_editing_file: DELETE_INDEX,
         };
 
         shell.directories.dirs[0] = Dir{
@@ -165,8 +135,7 @@ impl Shell
             ],
             parent_index: 0,
             child_count: 0,
-            child_indexes: [DELETE_INDEX; MAX_CHILDREN],
-            files_indexes: [DELETE_INDEX; MAX_CHILDREN],
+            child_indexes: [UNINITIALIZED_INDEX; MAX_CHILDREN],
         };
 
         return shell;
@@ -190,7 +159,8 @@ impl Shell
             {
                 SCREEN.lock().remove_symbol(3);
 
-                if self.buf_len > 0 {
+                if self.buf_len > 0 
+                {
                     self.buf_len -= 1;
                 }
 
@@ -237,7 +207,8 @@ impl Shell
         {
             SCREEN.lock().clear();
         }
-        else{
+        else
+        {
             println!();
             print!(
                 "\n[Error] Command \"{}\" is not supported!",
@@ -279,35 +250,35 @@ impl Shell
             return;
         }
 
-        let mut dir_index = DELETE_INDEX;
+        let mut dir_index = UNINITIALIZED_INDEX;
 
         for i in 0..100 
         {
-            if self.directories.dirs[i].index == DELETE_INDEX 
+            if self.directories.dirs[i].index == UNINITIALIZED_INDEX 
             {
                 dir_index = i;
                 break;
             }
         }
 
-        if dir_index == DELETE_INDEX 
+        if dir_index == UNINITIALIZED_INDEX 
         {
             print!("\n[Error] Can`t be created in this directory!");
             return;
         }
 
-        let mut available_index = DELETE_INDEX;
+        let mut available_index = UNINITIALIZED_INDEX;
 
         for i in 0..MAX_CHILDREN
         {
-            if self.directories.dirs[self.cur_dir].child_indexes[i] == DELETE_INDEX
+            if self.directories.dirs[self.cur_dir].child_indexes[i] == UNINITIALIZED_INDEX
             {
                 available_index = i;
                 break;
             }
         }
 
-        if available_index == DELETE_INDEX
+        if available_index == UNINITIALIZED_INDEX
         {
             print!("\n[Error] Can`t be created in this directory!");
             return;
@@ -318,11 +289,11 @@ impl Shell
             name: [b'\0'; 10],
             parent_index: self.cur_dir,
             child_count: 0,
-            child_indexes: [DELETE_INDEX; MAX_CHILDREN],
-            files_indexes: [DELETE_INDEX; 20],
+            child_indexes: [UNINITIALIZED_INDEX; MAX_CHILDREN],
         };
 
-        for i in 0..10 {
+        for i in 0..10 
+        {
             new_directory.name[i] = value[i];
         }
 
@@ -343,7 +314,14 @@ impl Shell
         if arg[0] == b'.' 
         {
             self.cur_dir = self.directories.dirs[self.cur_dir].parent_index;
-            return;
+            println!();
+                print!(
+                    "\n[Ok] Changed current dir to \"{}\"",
+                    core::str::from_utf8(&self.directories.dirs[self.cur_dir].name.clone())
+                        .unwrap()
+                        .trim_matches('\0')
+                );
+                return;
         }
 
         let cur_dir = self.directories.dirs[self.cur_dir];
@@ -372,7 +350,8 @@ impl Shell
                 }
             }
 
-            if has_same_name {
+            if has_same_name 
+            {
                 self.cur_dir = self.directories.dirs[dir_index].index;
                 println!();
                 print!(
@@ -397,6 +376,12 @@ impl Shell
     {
         let cur_dir = self.directories.dirs[self.cur_dir];
         let mut has_same_name = true;
+
+        if dir_name[0]==b'\0' 
+        {
+            println!();
+            println!("[Error] Entered name is null");
+        }
 
         for i in 0..cur_dir.child_count as usize 
         {
@@ -426,15 +411,14 @@ impl Shell
             self.directories.dirs[self.cur_dir].child_count -= 1;
 
             self.directories.dirs[dir_to_check.index] = Dir {
-                index: DELETE_INDEX,
+                index: UNINITIALIZED_INDEX,
                 name: [b' '; 10],
-                parent_index: DELETE_INDEX,
-                child_count: DELETE_INDEX as u8,
-                child_indexes: [DELETE_INDEX; MAX_CHILDREN],
-                files_indexes: [DELETE_INDEX; MAX_CHILDREN]
+                parent_index: UNINITIALIZED_INDEX,
+                child_count: UNINITIALIZED_INDEX as u8,
+                child_indexes: [UNINITIALIZED_INDEX; MAX_CHILDREN],
             };
 
-            self.directories.dirs[cur_dir.index].child_indexes[i] = DELETE_INDEX;
+            self.directories.dirs[cur_dir.index].child_indexes[i] = UNINITIALIZED_INDEX;
 
             print!(
                 "\n[Ok] Directory \"{}\" removed",
